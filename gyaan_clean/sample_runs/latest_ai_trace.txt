@@ -1,0 +1,8 @@
+Command:
+python3 app.py "What is the latest news about AI models?" --trace
+
+Expected behavior:
+- Router enables web search.
+- Demo search returns source objects.
+- reasoner, summarizer, and source_checker roles run.
+- abcdefg creates the final mixed answer.

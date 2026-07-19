@@ -1,0 +1,2 @@
+Analyze the user question.
+Identify intent, constraints, missing context, and the most direct answer path.

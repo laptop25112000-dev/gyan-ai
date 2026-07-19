@@ -1,0 +1,9 @@
+[project]
+name = "gyaan"
+version = "0.1.0"
+description = "Demo multi-model assistant with web-search routing and abcdefg mixing."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

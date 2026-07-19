@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GYAAAN AI - Next Gen Hybrid Search Assistant</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Typography & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Markdown & Syntax Highlighting -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar for Chat History -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i data-lucide="zap" class="logo-icon"></i>
+          <span>GYAAAN AI</span>
+        </div>
+        <button class="btn-new-chat" id="new-chat-btn" title="Start a new chat">
+          <i data-lucide="plus"></i>
+          <span>New Chat</span>
+        </button>
+      </div>
+
+      <!-- Threads List -->
+      <div class="threads-list" id="threads-container">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="btn-sidebar-action" id="clear-all-btn">
+          <i data-lucide="trash-2"></i>
+          <span>Clear All Chats</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Collapsible Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+      <!-- Top Nav -->
+      <header class="top-nav">
+        <div class="nav-left">
+          <button class="menu-toggle" id="menu-toggle-btn" aria-label="Toggle Sidebar">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="chat-title-container">
+            <h2 id="active-chat-title">New Conversation</h2>
+            <span class="status-indicator online">
+              <span class="status-dot"></span> Ready
+            </span>
+          </div>
+        </div>
+
+        <!-- Mode Segmented Control -->
+        <div class="mode-control">
+          <button class="mode-btn active" data-mode="hybrid" title="Automatically searches the web if needed">
+            <i data-lucide="git-branch"></i>
+            <span>Hybrid</span>
+          </button>
+          <button class="mode-btn" data-mode="web_search" title="Always performs web search">
+            <i data-lucide="search"></i>
+            <span>Search</span>
+          </button>
+          <button class="mode-btn" data-mode="no_search" title="AI only, no web search">
+            <i data-lucide="cpu"></i>
+            <span>No-Search</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Chat Feed Workspace -->
+      <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+          <!-- Empty State (Welcome Page) -->
+          <div class="welcome-screen" id="welcome-screen">
+            <div class="welcome-avatar">
+              <i data-lucide="bot" class="welcome-bot-icon"></i>
+            </div>
+            <h1>Empower Your Intellect with GYAAAN</h1>
+            <p class="subtitle">A highly intelligent AI companion equipped with real-time web search and glassmorphic premium design.</p>
+            
+            <div class="suggestions-grid">
+              <div class="suggestion-card" onclick="populatePrompt('What are the latest breakthroughs in fusion energy research?')">
+                <i data-lucide="flame" class="suggest-icon red"></i>
+                <div class="suggest-text">
+                  <h4>Fusion Energy</h4>
+                  <p>Check the latest scientific updates.</p>
+                </div>
+              </div>
+              <div class="suggestion-card" onclick="populatePrompt('Explain quantum computing to a 10 year old.')">
+                <i data-lucide="sparkles" class="suggest-icon gold"></i>
+                <div class="suggest-text">
+                  <h4>Quantum Physics</h4>
+                  <p>Simplify complex systems.</p>
+                </div>
+              </div>
+              <div class="suggestion-card" onclick="populatePrompt('Write a highly-optimized Python script to parse large JSON files.')">
+                <i data-lucide="code-2" class="suggest-icon purple"></i>
+                <div class="suggest-text">
+                  <h4>Code Generation</h4>
+                  <p>Create clean optimized logic.</p>
+                </div>
+              </div>
+              <div class="suggestion-card" onclick="populatePrompt('What is currently trending in the financial markets?')">
+                <i data-lucide="trending-up" class="suggest-icon green"></i>
+                <div class="suggest-text">
+                  <h4>Market Analysis</h4>
+                  <p>Query live stock market trends.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div class="typing-indicator-container hidden" id="typing-indicator">
+          <div class="typing-bubble">
+            <div class="typing-icon-wrapper">
+              <i data-lucide="bot"></i>
+            </div>
+            <div class="typing-indicator-dots">
+              <span class="status-indicator-text" id="typing-status-text">Thinking</span>
+              <div class="dot-bounce">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Bar Area -->
+        <footer class="input-container">
+          <form class="chat-form" id="chat-form">
+            <div class="input-wrap">
+              <textarea 
+                id="user-input" 
+                rows="1" 
+                placeholder="Ask GYAAAN anything... (Shift + Enter for new line)"
+              ></textarea>
+              <input type="file" id="file-input" multiple hidden />
+              
+              <div class="input-actions">
+                <button type="button" class="action-btn" id="btn-attach-files" title="Add files">
+                  <i data-lucide="plus"></i>
+                </button>
+                <button type="button" class="action-btn" id="btn-clear-current" title="Clear current inputs">
+                  <i data-lucide="eraser"></i>
+                </button>
+                <button type="submit" class="btn-send" id="btn-submit" title="Send Message">
+                  <i data-lucide="send"></i>
+                </button>
+              </div>
+            </div>
+            <div class="selected-files hidden" id="selected-files"></div>
+          </form>
+          <div class="footer-note">
+            <strong>MADE AND DESIGNED BY DIVYANSH</strong>
+          </div>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // State management
+    let threads = [];
+    let activeThreadId = null;
+    let activeMode = 'hybrid';
+    let isSubmitting = false;
+    let selectedFiles = [];
+    const maxFiles = 8;
+    const maxFileBytes = 8 * 1024 * 1024;
+
+    // Elements
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const typingStatusText = document.getElementById('typing-status-text');
+    const threadsContainer = document.getElementById('threads-container');
+    const activeChatTitle = document.getElementById('active-chat-title');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const clearAllBtn = document.getElementById('clear-all-btn');
+    const fileInput = document.getElementById('file-input');
+    const btnAttachFiles = document.getElementById('btn-attach-files');
+    const btnClearCurrent = document.getElementById('btn-clear-current');
+    const selectedFilesContainer = document.getElementById('selected-files');
+    
+    // Sidebar elements
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const menuToggleBtn = document.getElementById('menu-toggle-btn');
+
+    function normalizeMode(mode) {
+      const value = (mode || 'hybrid').replace('-', '_');
+      if (value === 'search' || value === 'force_search') return 'web_search';
+      if (value === 'direct' || value === 'no-search') return 'no_search';
+      return ['hybrid', 'web_search', 'no_search'].includes(value) ? value : 'hybrid';
+    }
+
+    // Configure marked options
+    marked.setOptions({
+      highlight: function(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+          return hljs.highlight(code, { language: lang }).value;
+        }
+        return hljs.highlightAuto(code).value;
+      },
+      breaks: true
+    });
+
+    // Initialize lucide icons
+    function initIcons() {
+      lucide.createIcons();
+    }
+
+    // Toggle Sidebar on Mobile
+    function toggleSidebar() {
+      sidebar.classList.toggle('active');
+      sidebarOverlay.classList.toggle('active');
+    }
+
+    menuToggleBtn.addEventListener('click', toggleSidebar);
+    sidebarOverlay.addEventListener('click', toggleSidebar);
+
+    // Initialize application
+    function initApp() {
+      // Load saved threads
+      const storedThreads = localStorage.getItem('gyaaan_threads');
+      const storedActiveId = localStorage.getItem('gyaaan_active_thread_id');
+      const storedMode = normalizeMode(localStorage.getItem('gyaaan_active_mode'));
+
+      if (storedMode) {
+        activeMode = storedMode;
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.getAttribute('data-mode') === activeMode);
+        });
+      }
+
+      if (storedThreads) {
+        try {
+          const parsedThreads = JSON.parse(storedThreads);
+          threads = Array.isArray(parsedThreads) ? parsedThreads : [];
+        } catch (err) {
+          console.warn('Resetting corrupted chat history:', err);
+          localStorage.removeItem('gyaaan_threads');
+          threads = [];
+        }
+      }
+
+      if (storedActiveId && threads.some(t => t.id === storedActiveId)) {
+        activeThreadId = storedActiveId;
+      } else if (threads.length > 0) {
+        activeThreadId = threads[0].id;
+      } else {
+        createNewThread();
+      }
+
+      const activeThread = threads.find(t => t.id === activeThreadId);
+      if (activeThread && activeThread.mode) {
+        activeMode = normalizeMode(activeThread.mode);
+      }
+      updateModeButtons();
+
+      renderThreads();
+      loadActiveThread();
+      initIcons();
+
+      // Autosize textarea
+      userInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+      });
+
+      // Submit on Enter (except with Shift)
+      userInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          chatForm.requestSubmit();
+        }
+      });
+    }
+
+    // Create a new thread
+    function createNewThread() {
+      const newId = 'thread_' + Date.now();
+      const newThread = {
+        id: newId,
+        title: 'New Conversation',
+        mode: activeMode,
+        history: [],
+        timestamp: new Date().toISOString()
+      };
+      threads.unshift(newThread);
+      activeThreadId = newId;
+      saveState();
+      renderThreads();
+      loadActiveThread();
+    }
+
+    // Save state to localStorage
+    function saveState() {
+      localStorage.setItem('gyaaan_threads', JSON.stringify(threads));
+      localStorage.setItem('gyaaan_active_thread_id', activeThreadId);
+      localStorage.setItem('gyaaan_active_mode', activeMode);
+    }
+
+    function updateModeButtons() {
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-mode') === activeMode);
+      });
+    }
+
+    // Render the sidebar threads list
+    function renderThreads() {
+      threadsContainer.innerHTML = '';
+      if (threads.length === 0) {
+        threadsContainer.innerHTML = '<div class="no-threads">No past chats</div>';
+        return;
+      }
+
+      threads.forEach(thread => {
+        const item = document.createElement('div');
+        item.className = `thread-item ${thread.id === activeThreadId ? 'active' : ''}`;
+        item.setAttribute('data-id', thread.id);
+        
+        item.innerHTML = `
+          <i data-lucide="message-square" class="thread-icon"></i>
+          <span class="thread-title">${escapeHTML(thread.title)}</span>
+          <button class="btn-delete-thread" title="Delete chat">
+            <i data-lucide="x"></i>
+          </button>
+        `;
+
+        // Switch thread
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-delete-thread')) {
+            e.stopPropagation();
+            deleteThread(thread.id);
+            return;
+          }
+          activeThreadId = thread.id;
+          activeMode = normalizeMode(thread.mode || activeMode);
+          saveState();
+          updateModeButtons();
+          renderThreads();
+          loadActiveThread();
+          if (window.innerWidth <= 768) {
+            toggleSidebar();
+          }
+        });
+
+        threadsContainer.appendChild(item);
+      });
+      initIcons();
+    }
+
+    // Delete thread
+    function deleteThread(id) {
+      threads = threads.filter(t => t.id !== id);
+      if (activeThreadId === id) {
+        activeThreadId = threads.length > 0 ? threads[0].id : null;
+      }
+      if (!activeThreadId) {
+        createNewThread();
+      } else {
+        saveState();
+        renderThreads();
+        loadActiveThread();
+      }
+    }
+
+    // Load active thread messages into window
+    function loadActiveThread() {
+      const activeThread = threads.find(t => t.id === activeThreadId);
+      if (!activeThread) return;
+
+      activeMode = normalizeMode(activeThread.mode || activeMode);
+      updateModeButtons();
+      activeChatTitle.textContent = activeThread.title;
+      
+      // Clear feed (keep welcome/empty state if history empty)
+      const welcomeElement = welcomeScreen.cloneNode(true);
+      chatMessages.innerHTML = '';
+      chatMessages.appendChild(welcomeElement);
+
+      if (activeThread.history.length === 0) {
+        document.getElementById('welcome-screen').classList.remove('hidden');
+      } else {
+        document.getElementById('welcome-screen').classList.add('hidden');
+        activeThread.history.forEach(msg => {
+          appendMessageUI(msg.role, msg.content, msg.sources, false, msg.attachments || []);
+        });
+      }
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Escape HTML helper
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    // Append a message directly to feed UI
+    function appendMessageUI(role, content, sources = [], animate = true, attachments = []) {
+      document.getElementById('welcome-screen').classList.add('hidden');
+
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${role === 'user' ? 'user' : 'assistant'} ${animate ? 'slide-in' : ''}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      avatar.innerHTML = role === 'user' 
+        ? `<i data-lucide="user"></i>` 
+        : `<i data-lucide="bot"></i>`;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'message-content-wrapper';
+
+      const header = document.createElement('div');
+      header.className = 'message-header';
+      header.textContent = role === 'user' ? 'You' : 'GYAAAN AI';
+
+      const body = document.createElement('div');
+      body.className = 'message-body markdown-body';
+      
+      if (role === 'user') {
+        body.textContent = content || 'Please analyze the attached file(s).';
+      } else {
+        // Render Markdown safely
+        const rendered = marked.parse(content);
+        body.innerHTML = window.DOMPurify ? DOMPurify.sanitize(rendered) : rendered;
+        // Highlight code
+        body.querySelectorAll('pre code').forEach((el) => {
+          hljs.highlightElement(el);
+        });
+      }
+
+      wrapper.appendChild(header);
+      wrapper.appendChild(body);
+
+      if (role === 'user' && attachments && attachments.length > 0) {
+        wrapper.appendChild(buildMessageFiles(attachments));
+      }
+
+      // If there are search sources, build a beautiful collapsible panel
+      if (role === 'assistant' && sources && sources.length > 0) {
+        const sourcesContainer = document.createElement('div');
+        sourcesContainer.className = 'sources-container';
+        
+        const trigger = document.createElement('button');
+        trigger.className = 'sources-trigger';
+        trigger.innerHTML = `
+          <i data-lucide="search" class="sources-icon"></i>
+          <span>Viewed ${sources.length} search references</span>
+          <i data-lucide="chevron-down" class="chevron"></i>
+        `;
+        
+        const contentPanel = document.createElement('div');
+        contentPanel.className = 'sources-panel hidden';
+        
+        const grid = document.createElement('div');
+        grid.className = 'sources-grid';
+        
+        sources.forEach((source, index) => {
+          const card = document.createElement('a');
+          card.className = 'source-card';
+          card.href = source.url;
+          card.target = '_blank';
+          card.rel = 'noopener noreferrer';
+          card.innerHTML = `
+            <div class="source-index">${index + 1}</div>
+              <div class="source-info">
+                <div class="source-title">${escapeHTML(source.title || 'Source Reference')}</div>
+                <div class="source-meta">${escapeHTML([source.provider, source.browser].filter(Boolean).join(' via ') || 'web reference')}</div>
+                <div class="source-url">${escapeHTML(source.url)}</div>
+              </div>
+          `;
+          grid.appendChild(card);
+        });
+
+        contentPanel.appendChild(grid);
+        
+        trigger.addEventListener('click', () => {
+          contentPanel.classList.toggle('hidden');
+          trigger.classList.toggle('expanded');
+        });
+
+        sourcesContainer.appendChild(trigger);
+        sourcesContainer.appendChild(contentPanel);
+        wrapper.appendChild(sourcesContainer);
+      }
+
+      msgDiv.appendChild(avatar);
+      msgDiv.appendChild(wrapper);
+      chatMessages.appendChild(msgDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      
+      initIcons();
+    }
+
+    // Populate prompt input
+    function populatePrompt(text) {
+      userInput.value = text;
+      userInput.focus();
+      userInput.style.height = 'auto';
+      userInput.style.height = (userInput.scrollHeight) + 'px';
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return '';
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function buildMessageFiles(files) {
+      const list = document.createElement('div');
+      list.className = 'message-files';
+      files.forEach(file => {
+        const chip = document.createElement('div');
+        chip.className = 'message-file-chip';
+        chip.innerHTML = `
+          <i data-lucide="file"></i>
+          <span>${escapeHTML(file.name)}</span>
+          <small>${escapeHTML(formatBytes(file.size))}</small>
+        `;
+        list.appendChild(chip);
+      });
+      return list;
+    }
+
+    function renderSelectedFiles() {
+      selectedFilesContainer.innerHTML = '';
+      if (selectedFiles.length === 0) {
+        selectedFilesContainer.classList.add('hidden');
+        return;
+      }
+
+      selectedFilesContainer.classList.remove('hidden');
+      selectedFiles.forEach((file, index) => {
+        const chip = document.createElement('div');
+        chip.className = 'file-chip';
+        chip.innerHTML = `
+          <i data-lucide="file-up"></i>
+          <span>${escapeHTML(file.name)}</span>
+          <small>${escapeHTML(formatBytes(file.size))}</small>
+          <button type="button" title="Remove file" data-index="${index}">
+            <i data-lucide="x"></i>
+          </button>
+        `;
+        chip.querySelector('button').addEventListener('click', () => {
+          selectedFiles.splice(index, 1);
+          renderSelectedFiles();
+        });
+        selectedFilesContainer.appendChild(chip);
+      });
+      initIcons();
+    }
+
+    function addFiles(files) {
+      const incoming = Array.from(files || []);
+      const accepted = [];
+
+      for (const file of incoming) {
+        if (selectedFiles.length + accepted.length >= maxFiles) break;
+        if (file.size > maxFileBytes) {
+          alert(`${file.name} is larger than 8 MB and was skipped.`);
+          continue;
+        }
+        accepted.push(file);
+      }
+
+      selectedFiles = selectedFiles.concat(accepted);
+      fileInput.value = '';
+      renderSelectedFiles();
+    }
+
+    function clearSelectedFiles() {
+      selectedFiles = [];
+      fileInput.value = '';
+      renderSelectedFiles();
+    }
+
+    function fileToPayload(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({
+          name: file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+          data: reader.result
+        });
+        reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Mode Selector listeners
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        activeMode = normalizeMode(this.getAttribute('data-mode'));
+        updateModeButtons();
+        
+        // Update active thread's mode configuration
+        const activeThread = threads.find(t => t.id === activeThreadId);
+        if (activeThread) {
+          activeThread.mode = activeMode;
+        }
+        saveState();
+      });
+    });
+
+    // New Chat handler
+    newChatBtn.addEventListener('click', createNewThread);
+
+    btnAttachFiles.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => addFiles(fileInput.files));
+
+    // Clear all history
+    clearAllBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to permanently delete all conversations?')) return;
+      
+      try {
+        await fetch('/api/history', { method: 'DELETE' });
+      } catch (err) {
+        console.error('Error clearing backend history:', err);
+      }
+
+      localStorage.removeItem('gyaaan_threads');
+      localStorage.removeItem('gyaaan_active_thread_id');
+      threads = [];
+      activeThreadId = null;
+      createNewThread();
+    });
+
+    // Clear current text box inputs
+    btnClearCurrent.addEventListener('click', () => {
+      userInput.value = '';
+      userInput.style.height = 'auto';
+      clearSelectedFiles();
+      userInput.focus();
+    });
+
+    // Submit prompt
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (isSubmitting) return;
+      const prompt = userInput.value.trim();
+      if (!prompt && selectedFiles.length === 0) return;
+
+      const activeThread = threads.find(t => t.id === activeThreadId);
+      if (!activeThread) return;
+
+      const filesForMessage = selectedFiles.map(file => ({
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size
+      }));
+
+      // 1. Clear text input
+      userInput.value = '';
+      userInput.style.height = 'auto';
+      userInput.disabled = true;
+      fileInput.disabled = true;
+      isSubmitting = true;
+
+      // 2. Add message to local thread state and feed
+      appendMessageUI('user', prompt, [], true, filesForMessage);
+      
+      const isFirstMessage = activeThread.history.length === 0;
+      
+      // We pass the last 10 messages for context
+      const payloadHistory = activeThread.history.slice(-10);
+
+      activeThread.history.push({ role: 'user', content: prompt || 'Please analyze the attached file(s).', attachments: filesForMessage });
+      if (isFirstMessage) {
+        // Auto update title to first 30 chars of prompt
+        const titleSource = prompt || filesForMessage.map(file => file.name).join(', ');
+        activeThread.title = titleSource.length > 28 ? titleSource.substring(0, 28) + '...' : titleSource;
+        activeChatTitle.textContent = activeThread.title;
+        renderThreads();
+      }
+      saveState();
+
+      // 3. Show dynamic typing indicator
+      typingIndicator.classList.remove('hidden');
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      // Check if search might be needed to set loading label
+      if (selectedFiles.length > 0) {
+        typingStatusText.textContent = 'Reading attached files';
+      } else if (activeMode === 'web_search' || (activeMode === 'hybrid' && /search|find|look|latest|news|weather|who|where/i.test(prompt))) {
+        typingStatusText.textContent = 'Searching the web';
+      } else {
+        typingStatusText.textContent = 'Formulating response';
+      }
+
+      try {
+        const attachmentPayloads = await Promise.all(selectedFiles.map(fileToPayload));
+        clearSelectedFiles();
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: prompt,
+            mode: activeMode,
+            history: payloadHistory,
+            attachments: attachmentPayloads
+          })
+        });
+
+        if (!response.ok) {
+          let errorMessage = 'Failed to generate response';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (_) {}
+          throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+        
+        // Hide indicator
+        typingIndicator.classList.add('hidden');
+
+        // 4. Update state with AI reply and render
+        const aiReply = data.reply || 'No response returned.';
+        const sources = data.sources || [];
+        
+        activeThread.history.push({ role: 'assistant', content: aiReply, sources: sources });
+        saveState();
+        appendMessageUI('assistant', aiReply, sources, true);
+        
+      } catch (err) {
+        console.error(err);
+        typingIndicator.classList.add('hidden');
+        appendMessageUI('assistant', `**Error:** ${err.message}`, [], true);
+      } finally {
+        isSubmitting = false;
+        userInput.disabled = false;
+        fileInput.disabled = false;
+        userInput.focus();
+      }
+    });
+
+    // Start App
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

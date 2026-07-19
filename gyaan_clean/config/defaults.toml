@@ -1,0 +1,8 @@
+[gyaan]
+mixer_model = "abcdefg"
+search_provider = "demo"
+model_provider = "demo"
+max_sources = 3
+
+[roles]
+enabled = ["reasoner", "summarizer", "source_checker", "coder"]
